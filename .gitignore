@@ -1,0 +1,17 @@
+# build output
+/bin/
+/dist/
+*.exe
+*.test
+coverage.out
+coverage.html
+
+# local config
+.env
+.env.local
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
