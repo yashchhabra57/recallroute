@@ -1,0 +1,32 @@
+# Local stack: PostgreSQL + RecallRoute. `docker compose up --build`,
+# then open http://localhost:8080.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: recallroute
+      POSTGRES_PASSWORD: recallroute
+      POSTGRES_DB: recallroute
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recallroute"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://recallroute:recallroute@db:5432/recallroute?sslmode=disable
+      RECALLROUTE_API_TOKEN: ${RECALLROUTE_API_TOKEN:-}
+      RECALLROUTE_FEED_URL: ${RECALLROUTE_FEED_URL:-}
+      RECALLROUTE_POLL_INTERVAL: ${RECALLROUTE_POLL_INTERVAL:-6h}
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
