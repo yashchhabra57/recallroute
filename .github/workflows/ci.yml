@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then echo "Run gofmt on:"; echo "$unformatted"; exit 1; fi
+      - name: go vet
+        run: go vet ./...
+      - name: go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+      - name: UI script parses
+        run: node --check web/static/app.js
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.25.x", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Unit and integration tests (race detector)
+        run: go test -race -count=1 -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+      - name: Matcher benchmark (smoke)
+        run: go test -run '^$' -bench . -benchtime 20x ./internal/match/
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recallroute_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      RECALLROUTE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/recallroute_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Store contract suite on PostgreSQL
+        run: go test -race -count=1 -v ./internal/store/pgstore/
+      - name: End-to-end smoke against the real server
+        run: |
+          createdb -h localhost -U postgres recallroute_smoke
+          go build -o recallroute ./cmd/recallroute
+          DATABASE_URL=postgres://postgres:postgres@localhost:5432/recallroute_smoke?sslmode=disable \
+          RECALLROUTE_API_TOKEN=ci-token RECALLROUTE_ADDR=:8080 ./recallroute > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:8080/healthz && break; sleep 1; done
+          go run ./scripts/smoke -base http://localhost:8080 -token ci-token
+        env:
+          PGPASSWORD: postgres
+      - name: Server log
+        if: always()
+        run: cat server.log || true
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build image
+        run: docker build -t recallroute:ci .
+      - name: Run container and smoke test
+        run: |
+          docker run -d --name rr -p 8080:8080 recallroute:ci
+          for i in $(seq 1 30); do curl -sf localhost:8080/healthz && break; sleep 1; done
+          go run ./scripts/smoke -base http://localhost:8080
+      - name: Container log
+        if: always()
+        run: docker logs rr || true
