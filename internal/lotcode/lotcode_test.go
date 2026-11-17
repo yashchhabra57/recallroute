@@ -2,6 +2,7 @@ package lotcode
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -189,4 +190,59 @@ func TestSizesNotLotCodes(t *testing.T) {
 	if !reflect.DeepEqual(s.Exact, []string{"2341A"}) {
 		t.Errorf("got %v", s.Exact)
 	}
+}
+
+// Code-info strings below are taken from live openFDA food enforcement
+// reports (Sept-Nov 2026) that the first version of the parser missed.
+func TestLiveFeedShapes(t *testing.T) {
+	t.Run("no codes means all units", func(t *testing.T) {
+		for _, text := range []string{"No codes", "none", "no lot code", "N/A", "No code applied.", "All batch codes."} {
+			if s := Parse(text); !s.All {
+				t.Errorf("Parse(%q) = %+v, want All", text, s)
+			}
+		}
+	})
+	t.Run("no lot code but a best-by date is date-only", func(t *testing.T) {
+		s := Parse("No lot code, Best By JUL 22 27")
+		want := []DateRange{{d("2027-07-22"), d("2027-07-22")}}
+		if s.All || !reflect.DeepEqual(s.BestBy, want) {
+			t.Errorf("got %+v", s)
+		}
+	})
+	t.Run("unlabelled range", func(t *testing.T) {
+		s := Parse("190A26184 - 190A26216")
+		if !reflect.DeepEqual(s.Ranges, []Range{{Prefix: "190A", Lo: 26184, Hi: 26216}}) {
+			t.Errorf("got %+v", s)
+		}
+	})
+	t.Run("unlabelled codes with dates and states", func(t *testing.T) {
+		s := Parse("Illinois: TFIC211, 8/7/2026. Texas: TFTX209U11, 8/7/2026; TFTX211, 8/9/2026.")
+		want := []string{"TFIC211", "TFTX209U11", "TFTX211"}
+		if !reflect.DeepEqual(s.Exact, want) || len(s.BestBy) != 0 {
+			t.Errorf("got %+v", s)
+		}
+	})
+	t.Run("codes interleaved with dates", func(t *testing.T) {
+		s := Parse("L6080C SEP 20 2027 L6079C SEP 19 2027")
+		if !reflect.DeepEqual(s.Exact, []string{"L6079C", "L6080C"}) {
+			t.Errorf("got %+v", s)
+		}
+	})
+	t.Run("long state-by-state list", func(t *testing.T) {
+		text := strings.Repeat("Florida: TFFL208, 8/9/2026; TFFL210, 8/10/2026. ", 4) + "Texas: TFTX208016, 8/8/2026; TFTX209016, 8/9/2026; TFTX210016, 8/10/2026."
+		if s := Parse(text); len(s.Exact) != 5 {
+			t.Errorf("got %+v", s.Exact)
+		}
+	})
+	t.Run("hyphenated single codes", func(t *testing.T) {
+		if s := Parse("108-728-420"); !reflect.DeepEqual(s.Exact, []string{"108728420"}) {
+			t.Errorf("got %+v", s)
+		}
+	})
+	t.Run("long prose is not mined", func(t *testing.T) {
+		long := strings.Repeat("Products were distributed to 120 retail stores in 14 states. ", 6)
+		if s := Parse(long); !s.Empty() {
+			t.Errorf("got %+v", s)
+		}
+	})
 }

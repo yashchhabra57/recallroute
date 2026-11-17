@@ -20,7 +20,7 @@ const monthAlt = `(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?`
 var dateRe = regexp.MustCompile(`(?i)` +
 	`\b(\d{4})-(\d{1,2})-(\d{1,2})\b` + // 1-3: 2026-11-15
 	`|\b(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})\b` + // 4-6: 11/15/2026, 11/15/26
-	`|\b` + monthAlt + `\s+(\d{1,2}),?\s+(\d{4})\b` + // 7-9: Nov 15, 2026
+	`|\b` + monthAlt + `\s+(\d{1,2}),?\s+(\d{4}|\d{2})\b` + // 7-9: Nov 15, 2026 / JUL 22 27
 	`|\b(\d{1,2})\s+` + monthAlt + `\s+(\d{4})\b` + // 10-12: 15 NOV 2026
 	`|\b` + monthAlt + `\s+(\d{4})\b`) // 13-14: NOV 2026 (whole month)
 
@@ -49,7 +49,7 @@ func extractDates(text string) ([]DateRange, string) {
 		case g(4) != "":
 			r, ok = dayRange(year(g(6)), atoi(g(4)), atoi(g(5)))
 		case g(7) != "":
-			r, ok = dayRange(atoi(g(9)), int(months[strings.ToLower(g(7))[:3]]), atoi(g(8)))
+			r, ok = dayRange(year(g(9)), int(months[strings.ToLower(g(7))[:3]]), atoi(g(8)))
 		case g(10) != "":
 			r, ok = dayRange(atoi(g(12)), int(months[strings.ToLower(g(11))[:3]]), atoi(g(10)))
 		case g(13) != "":

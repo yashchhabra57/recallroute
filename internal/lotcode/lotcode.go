@@ -165,7 +165,7 @@ var (
 	// prefix (anything, non-greedy) + last digit run + trailing letters.
 	codeShape = regexp.MustCompile(`^(.*?)(\d+)([A-Z]*)$`)
 
-	allRe = regexp.MustCompile(`(?i)\ball\s+(?:lot(?:\s+codes?|\s+numbers?|s)?|codes|product\s+codes|best[\s-]+by\s+dates|expiration\s+dates|dates)\b`)
+	allRe = regexp.MustCompile(`(?i)\ball\s+(?:lot(?:\s+codes?|\s+numbers?|s)?|codes|product\s+codes|batch\s+codes|best[\s-]+by\s+dates|expiration\s+dates|dates)\b`)
 
 	// Start of a lot list. The capture is the list text up to the next
 	// sentence break or the next unrelated label.
@@ -175,10 +175,31 @@ var (
 
 	bestByKeywordRe = regexp.MustCompile(`(?i)\b(?:best\s+(?:if\s+used\s+)?by|best\s+before|use\s+by|sell\s+by|enjoy\s+by|exp(?:iration|iry)?\.?(?:\s+dates?)?|bb)\b`)
 
+	noCodesRe = regexp.MustCompile(`(?i)^\W*(?:no\s+(?:lot\s+|batch\s+)?codes?(?:\s+applied)?|none|n/?a|no\s+lot\s+numbers?|not\s+coded|uncoded)\W*$`)
+
 	rangeSepRe = regexp.MustCompile(`(?i)^\s*(?:through|thru|to|until|-|–|—)\s*$`)
 	listSepRe  = regexp.MustCompile(`(?i)\s*(?:,|&|\band\b|\bor\b|/|\s{2,})\s*`)
 	listRngRe  = regexp.MustCompile(`(?i)^(.+?)\s*(?:\s(?:through|thru|to)\s|\s*[-–—]\s*)\s*(.+)$`)
 )
+
+// minCodeDensity is the share of words that must look like lot codes
+// before unlabelled text is read as a code list. Lists of codes score
+// 0.4-1.0; prose that happens to contain a number scores well under 0.2.
+const minCodeDensity = 0.3
+
+func codeDensity(text string) float64 {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return 0
+	}
+	n := 0
+	for _, w := range words {
+		if isLotCode(Normalize(w)) {
+			n++
+		}
+	}
+	return float64(n) / float64(len(words))
+}
 
 // Parse reads a recall's code info into a Spec. Unrecognized text is
 // ignored; check Spec.Empty to see whether anything usable was found.
@@ -204,8 +225,21 @@ func Parse(text string) Spec {
 	}
 	rest = prefixRe.ReplaceAllString(rest, " ")
 
-	for _, m := range lotListRe.FindAllStringSubmatch(rest, -1) {
+	lists := lotListRe.FindAllStringSubmatch(rest, -1)
+	for _, m := range lists {
 		parseLotList(m[1], &s)
+	}
+	// Many notices list codes with no "Lot" label at all
+	// ("190A26184 - 190A26216", "Tennessee: TFTN2162, 8/19/2026."). If no
+	// labelled list was found and the text is mostly codes, read it as a
+	// bare list.
+	if len(lists) == 0 && codeDensity(rest) >= minCodeDensity {
+		parseLotList(rest, &s)
+	}
+	// "No codes" / "none" means the product carries no lot code, so every
+	// unit on the shelf is covered.
+	if s.Empty() && noCodesRe.MatchString(text) {
+		s.All = true
 	}
 	sort.Strings(s.Exact)
 	return s
