@@ -91,7 +91,7 @@ func New(svc *service.Service, cfg Config) http.Handler {
 }
 
 func (h *handler) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "store": h.cfg.StoreKind, "auth": h.cfg.Token != ""})
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "store": h.cfg.StoreKind, "auth": h.cfg.Token != "", "poll": h.cfg.Poll != nil})
 }
 
 func (h *handler) listRecalls(w http.ResponseWriter, r *http.Request) {
