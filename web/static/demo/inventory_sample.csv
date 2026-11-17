@@ -1,0 +1,10 @@
+sku,name,brand,gtin,lot_code,best_by,quantity,location
+CUR-12,Cheddar Cheese Curds 12 oz,Northwoods Creamery,071234001019,2345A,2026-12-10,24,Cooler B
+CUR-12,Cheddar Cheese Curds 12 oz,Northwoods Creamery,071234001019,2390A,2027-01-20,18,Cooler B
+CUR-12,Cheddar Cheese Curds 12 oz,Northwoods Creamery,071234001019,,,6,Cooler B
+CRK-8,Peanut Butter Sandwich Crackers 8 pk,Lakeshore Snacks,085777003126,L5531,2027-04-01,60,Dry Aisle 3
+OAT-42,Old Fashioned Rolled Oats 42 oz,Prairie Gold,,P-7781,2027-03-14,30,Dry Aisle 1
+OAT-42Q,Quick Oats 42 oz,Prairie Gold,,P-7790,2027-06-01,20,Dry Aisle 1
+WFS-8,Smoked Whitefish Spread 8 oz,Superior Bay,094200007778,24-123,2026-12-20,12,Cooler A
+BNS-15,Black Beans 15 oz,Valley Harvest,071234009992,B2201,2028-05-01,140,Dry Aisle 2
+PJC-12,Pepper Jack Cheese Curds 12 oz,Northwoods Creamery,071234002054,2201C,2026-12-01,10,Cooler B

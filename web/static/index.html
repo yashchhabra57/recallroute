@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RecallRoute</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>RecallRoute</h1>
+      <span class="sub">recall pull board</span>
+    </div>
+    <div class="status"><span id="ws-dot" class="dot off"></span><span id="ws-label">offline</span></div>
+  </header>
+
+  <section class="toolbar">
+    <label>Your name <input id="actor" placeholder="e.g. Sam (warehouse)" autocomplete="name"></label>
+    <label>API token <input id="token" type="password" placeholder="only if the server requires one"></label>
+    <label class="file">Import inventory CSV <input id="csv" type="file" accept=".csv,text/csv"></label>
+    <button id="demo-lots" type="button">Load demo inventory</button>
+    <button id="demo-recalls" type="button">Load demo recalls</button>
+    <button id="poll" type="button" hidden>Check feed now</button>
+  </section>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <main id="board" aria-label="Alert board">
+    <section class="col" data-state="new"><h2>New <span class="n"></span></h2><div class="cards"></div></section>
+    <section class="col" data-state="acknowledged"><h2>Acknowledged <span class="n"></span></h2><div class="cards"></div></section>
+    <section class="col" data-state="pulled"><h2>Pulled <span class="n"></span></h2><div class="cards"></div></section>
+    <section class="col" data-state="notified"><h2>Notified <span class="n"></span></h2><div class="cards"></div></section>
+    <section class="col" data-state="closed"><h2>Closed <span class="n"></span></h2><div class="cards"></div></section>
+    <section class="col" data-state="dismissed"><h2>Dismissed <span class="n"></span></h2><div class="cards"></div></section>
+  </main>
+  <p id="empty" class="empty" hidden>No alerts yet. Import inventory and recalls (or load the demo data) to see matches.</p>
+
+  <dialog id="detail">
+    <form method="dialog" class="close-row"><button aria-label="Close">×</button></form>
+    <div id="detail-body"></div>
+  </dialog>
+
+  <template id="card-tpl">
+    <article class="card" tabindex="0">
+      <div class="row"><span class="tier"></span><span class="cls"></span></div>
+      <h3 class="product"></h3>
+      <p class="meta"></p>
+      <p class="why"></p>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
